@@ -208,6 +208,8 @@ const ADMIN_HTML = `<!DOCTYPE html>
     <p class="tip">备注（可选）</p>
     <input id="new-note" placeholder="如：工作邮箱、个人账号…" maxlength="100">
     <button class="btn btn-primary" onclick="addAccount()">添加</button>
+    <div style="display:flex;align-items:center;margin:10px 0"><div style="flex:1;height:1px;background:#e5e7eb"></div><span style="padding:0 10px;font-size:.78em;color:#9ca3af">或</span><div style="flex:1;height:1px;background:#e5e7eb"></div></div>
+    <button class="btn" style="background:#f5f3ff;color:#4f46e5;width:100%;display:flex;align-items:center;justify-content:center;gap:8px" onclick="openQR()">📷 扫描二维码导入</button>
   </div>
 
   <div class="card">
@@ -326,6 +328,125 @@ async function hashPin(pin){
 const saved=localStorage.getItem('ph');
 if(saved){pinHash=saved;document.getElementById('login-view-admin').style.display='none';document.getElementById('admin-main').style.display='block';loadAccounts();}
 </script>
+
+<!-- QR 扫码弹窗 -->
+<div id="qr-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.7);z-index:200;align-items:center;justify-content:center;flex-direction:column">
+  <div class="card" style="max-width:380px;width:90%;margin:0 20px;padding:20px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <h2 style="margin:0">📷 扫描二维码</h2>
+      <button onclick="closeQR()" style="background:none;border:none;font-size:1.4em;cursor:pointer;color:#9ca3af;padding:0">×</button>
+    </div>
+    <!-- 摄像头预览 -->
+    <div style="position:relative;border-radius:12px;overflow:hidden;background:#000;aspect-ratio:1">
+      <video id="qr-video" autoplay playsinline style="width:100%;height:100%;object-fit:cover"></video>
+      <canvas id="qr-canvas" style="display:none"></canvas>
+      <!-- 扫描框 -->
+      <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:60%;height:60%;border:2px solid #fff;border-radius:8px;box-shadow:0 0 0 9999px rgba(0,0,0,.4)"></div>
+      <div id="qr-status" style="position:absolute;bottom:12px;left:0;right:0;text-align:center;color:#fff;font-size:.82em;background:rgba(0,0,0,.5);padding:4px">对准二维码自动识别…</div>
+    </div>
+    <!-- 或上传图片 -->
+    <div style="display:flex;align-items:center;margin:12px 0 8px"><div style="flex:1;height:1px;background:#e5e7eb"></div><span style="padding:0 10px;font-size:.78em;color:#9ca3af">或上传图片</span><div style="flex:1;height:1px;background:#e5e7eb"></div></div>
+    <label style="display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border:1.5px dashed #c7d2fe;border-radius:10px;cursor:pointer;color:#4f46e5;font-size:.9em">
+      🖼 选择图片文件
+      <input type="file" accept="image/*" id="qr-file" style="display:none" onchange="scanFile(this)">
+    </label>
+    <div id="qr-msg" style="display:none;margin-top:10px;padding:10px;border-radius:8px;font-size:.88em"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+<script>
+let qrStream = null, qrTimer = null;
+
+function openQR() {
+  document.getElementById('qr-modal').style.display = 'flex';
+  startCamera();
+}
+
+function closeQR() {
+  stopCamera();
+  document.getElementById('qr-modal').style.display = 'none';
+  document.getElementById('qr-msg').style.display = 'none';
+}
+
+async function startCamera() {
+  try {
+    qrStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+    const video = document.getElementById('qr-video');
+    video.srcObject = qrStream;
+    video.play();
+    qrTimer = setInterval(scanFrame, 300);
+  } catch (e) {
+    document.getElementById('qr-status').textContent = '无法访问摄像头，请使用上传图片';
+  }
+}
+
+function stopCamera() {
+  clearInterval(qrTimer);
+  if (qrStream) { qrStream.getTracks().forEach(t => t.stop()); qrStream = null; }
+}
+
+function scanFrame() {
+  const video = document.getElementById('qr-video');
+  if (video.readyState !== video.HAVE_ENOUGH_DATA) return;
+  const canvas = document.getElementById('qr-canvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0);
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const code = jsQR(imageData.data, canvas.width, canvas.height);
+  if (code) handleQRResult(code.data);
+}
+
+function scanFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const img = new Image();
+  img.onload = () => {
+    const canvas = document.getElementById('qr-canvas');
+    canvas.width = img.width;
+    canvas.height = img.height;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0);
+    const imageData = ctx.getImageData(0, 0, img.width, img.height);
+    const code = jsQR(imageData.data, img.width, img.height);
+    if (code) handleQRResult(code.data);
+    else showQRMsg('未识别到二维码，请尝试更清晰的图片', 'err');
+  };
+  img.src = URL.createObjectURL(file);
+}
+
+async function handleQRResult(data) {
+  stopCamera();
+  document.getElementById('qr-status').textContent = '✅ 已识别，正在导入…';
+  if (!data.startsWith('otpauth://')) {
+    showQRMsg('不是有效的 2FA 二维码（需要 otpauth:// 格式）', 'err');
+    return;
+  }
+  const res = await fetch('/api/qr-import', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-pin-hash': pinHash },
+    body: JSON.stringify({ uri: data })
+  });
+  const d = await res.json();
+  if (d.success) {
+    showQRMsg('✅ 导入成功！', 'ok');
+    setTimeout(() => { closeQR(); loadAccounts(); }, 1200);
+  } else {
+    showQRMsg(d.error || '导入失败', 'err');
+  }
+}
+
+function showQRMsg(text, type) {
+  const el = document.getElementById('qr-msg');
+  el.textContent = text;
+  el.style.display = 'block';
+  el.style.background = type === 'ok' ? '#dcfce7' : '#fee2e2';
+  el.style.color = type === 'ok' ? '#16a34a' : '#ef4444';
+}
+</script>
+
 </body>
 </html>`;
 
