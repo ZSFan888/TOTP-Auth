@@ -129,6 +129,33 @@ const HOME_HTML = `<!DOCTYPE html>
   .empty-title { font-size: 14px; color: var(--text-secondary); margin-bottom: 4px; }
   .empty-desc { font-size: 12px; }
 
+
+  /* ===== SEARCH ===== */
+  .search-wrap { margin-bottom: 18px; position: relative; }
+  .search-wrap input { padding-left: 34px; background: var(--bg-card); }
+  .search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 14px; pointer-events: none; }
+
+  /* ===== TOKEN CARD DRAG ===== */
+  .token-card { user-select: none; touch-action: none; }
+  .token-card.dragging { opacity: .5; border: 1px dashed var(--accent); box-shadow: var(--shadow); }
+  .token-card.drag-over { border-color: var(--accent); background: var(--accent-bg); }
+
+  /* ===== WARNING STATE ===== */
+  .token-card.expiring .token-code { color: var(--error) !important; }
+  .token-card.expiring .progress-bar { background: var(--error) !important; }
+  .token-card.expiring .token-timer { color: var(--error); font-weight: 600; }
+
+  /* ===== FAVICON AVATAR ===== */
+  .token-avatar { width: 20px; height: 20px; border-radius: 4px; object-fit: contain; margin-right: 6px; vertical-align: middle; display: inline-block; }
+  .token-avatar-letter { width: 20px; height: 20px; border-radius: 4px; background: var(--accent-bg); color: var(--accent); font-size: 10px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; margin-right: 6px; vertical-align: middle; flex-shrink: 0; }
+
+  /* ===== CODE FLIP ANIMATION ===== */
+  @keyframes flipIn { 0%{transform:translateY(-6px);opacity:0} 100%{transform:translateY(0);opacity:1} }
+  .token-code.flip { animation: flipIn .25s ease forwards; }
+
+  /* ===== SECTION ROW UPDATE ===== */
+  .section-row { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+
   /* ===== RESPONSIVE ===== */
   @media (max-width: 640px) {
     .layout { grid-template-columns: 1fr; grid-template-rows: 48px auto 1fr; }
@@ -199,14 +226,65 @@ const HOME_HTML = `<!DOCTYPE html>
   <main class="main">
     <div class="page-header">
       <div class="page-title">验证码</div>
-      <div class="page-desc">点击验证码自动复制 · 每 30 秒自动刷新</div>
+      <div class="page-desc">点击验证码自动复制 · 每 30 秒自动刷新 · 长按拖动排序</div>
+    </div>
+    <div class="search-wrap">
+      <span class="search-icon">⌕</span>
+      <input type="text" id="search-input" placeholder="搜索账户名、备注…" oninput="filterTokens(this.value)">
     </div>
     <div class="section-row" id="tokens"></div>
   </main>
 </div>
 
 <script>
-let pinHash = localStorage.getItem('ph'), data = [];
+// ===== 常见服务图标映射 =====
+const FAVICON_MAP = {
+  google: 'https://www.google.com/favicon.ico',
+  gmail: 'https://www.google.com/favicon.ico',
+  github: 'https://github.com/favicon.ico',
+  gitlab: 'https://gitlab.com/favicon.ico',
+  apple: 'https://www.apple.com/favicon.ico',
+  microsoft: 'https://www.microsoft.com/favicon.ico',
+  twitter: 'https://twitter.com/favicon.ico',
+  x: 'https://x.com/favicon.ico',
+  facebook: 'https://www.facebook.com/favicon.ico',
+  amazon: 'https://www.amazon.com/favicon.ico',
+  aws: 'https://aws.amazon.com/favicon.ico',
+  cloudflare: 'https://www.cloudflare.com/favicon.ico',
+  dropbox: 'https://www.dropbox.com/favicon.ico',
+  discord: 'https://discord.com/favicon.ico',
+  slack: 'https://slack.com/favicon.ico',
+  notion: 'https://www.notion.so/favicon.ico',
+  binance: 'https://www.binance.com/favicon.ico',
+  okx: 'https://www.okx.com/favicon.ico',
+  paypal: 'https://www.paypal.com/favicon.ico',
+  stripe: 'https://stripe.com/favicon.ico',
+  vercel: 'https://vercel.com/favicon.ico',
+  netlify: 'https://www.netlify.com/favicon.ico',
+  digitalocean: 'https://www.digitalocean.com/favicon.ico',
+  twilio: 'https://www.twilio.com/favicon.ico',
+  npm: 'https://www.npmjs.com/favicon.ico',
+  docker: 'https://www.docker.com/favicon.ico',
+  figma: 'https://www.figma.com/favicon.ico',
+  linear: 'https://linear.app/favicon.ico',
+};
+
+function getFaviconUrl(name, issuer) {
+  const key = (issuer || name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  for (const [k, v] of Object.entries(FAVICON_MAP)) {
+    if (key.includes(k)) return v;
+  }
+  return null;
+}
+
+function avatarHtml(name, issuer) {
+  const url = getFaviconUrl(name, issuer);
+  const letter = (name || '?')[0].toUpperCase();
+  if (url) return `<img class="token-avatar" src="${url}" onerror="this.style.display='none';this.nextSibling.style.display='inline-flex'" alt=""><span class="token-avatar-letter" style="display:none">${letter}</span>`;
+  return `<span class="token-avatar-letter">${letter}</span>`;
+}
+
+let pinHash = localStorage.getItem('ph'), data = [], filteredData = [], dragSrcIdx = null;
 if (pinHash) tryAutoLogin();
 
 async function login() {
@@ -221,7 +299,7 @@ async function login() {
 
 async function tryAutoLogin() {
   const res = await fetch('/api/accounts', { headers: { 'x-pin-hash': pinHash } });
-  if (res.ok) { data = await res.json(); showApp(); }
+  if (res.ok) { data = await res.json(); filteredData = [...data]; showApp(); }
   else { localStorage.removeItem('ph'); pinHash = null; }
 }
 
@@ -233,52 +311,120 @@ function showApp() {
 
 function logout() { localStorage.removeItem('ph'); location.reload(); }
 
+// ===== 搜索/筛选 =====
+function filterTokens(q) {
+  const kw = q.trim().toLowerCase();
+  filteredData = kw ? data.filter(a => (a.name + a.note + a.issuer).toLowerCase().includes(kw)) : [...data];
+  renderTokens();
+}
+
+// ===== 渲染 =====
 function renderTokens() {
   const el = document.getElementById('tokens');
-  if (!data.length) {
-    el.innerHTML = `<div class="empty" style="grid-column:1/-1"><div class="empty-icon">🔐</div><div class="empty-title">暂无账户</div><div class="empty-desc">前往管理页面添加 2FA 账户</div><button class="btn btn-ghost" style="margin-top:12px" onclick="location.href='/admin'">前往管理</button></div>`;
+  if (!filteredData.length) {
+    el.innerHTML = data.length
+      ? `<div class="empty" style="grid-column:1/-1"><div class="empty-icon">🔍</div><div class="empty-title">无匹配结果</div></div>`
+      : `<div class="empty" style="grid-column:1/-1"><div class="empty-icon">🔐</div><div class="empty-title">暂无账户</div><div class="empty-desc">前往管理页面添加 2FA 账户</div><button class="btn btn-ghost" style="margin-top:12px" onclick="location.href='/admin'">前往管理</button></div>`;
     return;
   }
-  el.innerHTML = data.map(a => `
-    <div class="token-card" onclick="copyCode('${a.id}','${a.token}')">
-      <div class="token-issuer">${esc(a.issuer)}</div>
+  const rem = 30 - (Math.floor(Date.now() / 1000) % 30);
+  el.innerHTML = filteredData.map((a, i) => `
+    <div class="token-card${rem <= 8 ? ' expiring' : ''}" data-idx="${i}" draggable="true"
+      ondragstart="dragStart(event,${i})" ondragover="dragOver(event,${i})" ondragend="dragEnd(event)"
+      ondrop="drop(event,${i})" onclick="copyCode('${a.id}','${a.token}')">
+      <div class="token-issuer" style="display:flex;align-items:center">
+        ${avatarHtml(a.name, a.issuer)}
+        ${esc(a.issuer)}
+      </div>
       <div class="token-name">${esc(a.name)}</div>
       <div class="token-note">${esc(a.note || '')}</div>
       <div class="token-code" id="code-${a.id}">${fmt(a.token)}</div>
-      <div class="progress-wrap"><div class="progress-bar" id="bar-${a.id}" style="width:${a.remaining/30*100}%"></div></div>
+      <div class="progress-wrap"><div class="progress-bar" id="bar-${a.id}" style="width:${rem/30*100}%"></div></div>
       <div class="token-meta">
-        <span class="token-timer" id="sec-${a.id}">${a.remaining}s</span>
+        <span class="token-timer" id="sec-${a.id}">${rem}s</span>
         <span class="copy-hint" id="hint-${a.id}">点击复制</span>
         <span class="copied-badge" id="copied-${a.id}">已复制 ✓</span>
       </div>
     </div>`).join('');
 }
 
+// ===== 复制 =====
 async function copyCode(id, token) {
   await navigator.clipboard.writeText(token).catch(() => {});
+  if (navigator.vibrate) navigator.vibrate(30);
   document.getElementById('hint-' + id).style.display = 'none';
   document.getElementById('copied-' + id).style.display = 'inline';
-  setTimeout(() => { document.getElementById('hint-' + id).style.display = 'inline'; document.getElementById('copied-' + id).style.display = 'none'; }, 2000);
+  setTimeout(() => {
+    if (document.getElementById('hint-' + id)) {
+      document.getElementById('hint-' + id).style.display = 'inline';
+      document.getElementById('copied-' + id).style.display = 'none';
+    }
+  }, 2000);
+}
+
+// ===== 拖拽排序 =====
+function dragStart(e, idx) { dragSrcIdx = idx; e.currentTarget.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; }
+function dragOver(e, idx) {
+  e.preventDefault(); e.dataTransfer.dropEffect = 'move';
+  document.querySelectorAll('.token-card').forEach(c => c.classList.remove('drag-over'));
+  if (dragSrcIdx !== idx) e.currentTarget.classList.add('drag-over');
+}
+function dragEnd(e) { e.currentTarget.classList.remove('dragging'); document.querySelectorAll('.token-card').forEach(c => c.classList.remove('drag-over')); }
+async function drop(e, toIdx) {
+  e.preventDefault();
+  if (dragSrcIdx === null || dragSrcIdx === toIdx) return;
+  // 在原始 data 里找到对应元素并重排
+  const srcId = filteredData[dragSrcIdx].id;
+  const toId = filteredData[toIdx].id;
+  const srcRealIdx = data.findIndex(a => a.id === srcId);
+  const toRealIdx = data.findIndex(a => a.id === toId);
+  const [moved] = data.splice(srcRealIdx, 1);
+  data.splice(toRealIdx, 0, moved);
+  filteredData = [...data];
+  dragSrcIdx = null;
+  renderTokens();
+  // 同步到 KV
+  await fetch('/api/reorder', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-pin-hash': pinHash }, body: JSON.stringify({ order: data.map(a => a.id) }) });
+}
+
+// ===== 定时刷新 =====
+let prevRem = -1;
+function startTimer() {
+  setInterval(async () => {
+    const rem = 30 - (Math.floor(Date.now() / 1000) % 30);
+    const expiring = rem <= 8;
+    filteredData.forEach(a => {
+      const bar = document.getElementById('bar-' + a.id);
+      const sec = document.getElementById('sec-' + a.id);
+      const card = bar?.closest('.token-card');
+      if (bar) bar.style.width = (rem / 30 * 100) + '%';
+      if (sec) sec.textContent = rem + 's';
+      if (card) { if (expiring) card.classList.add('expiring'); else card.classList.remove('expiring'); }
+    });
+    if (rem === 30 && prevRem !== 30) {
+      const res = await fetch('/api/accounts', { headers: { 'x-pin-hash': pinHash } });
+      if (res.ok) {
+        const newData = await res.json();
+        // 数字翻转动画
+        newData.forEach(a => {
+          const el = document.getElementById('code-' + a.id);
+          if (el && el.textContent !== fmt(a.token)) {
+            el.textContent = fmt(a.token);
+            el.classList.remove('flip');
+            void el.offsetWidth;
+            el.classList.add('flip');
+          }
+        });
+        data = newData; filteredData = data.filter(a => { const q = document.getElementById('search-input')?.value.trim().toLowerCase(); return !q || (a.name+a.note+a.issuer).toLowerCase().includes(q); });
+        renderTokens();
+      }
+    }
+    prevRem = rem;
+  }, 1000);
 }
 
 function fmt(t) { return t.slice(0, 3) + ' ' + t.slice(3); }
 function esc(s) { return String(s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
-
-function startTimer() {
-  setInterval(async () => {
-    const rem = 30 - (Math.floor(Date.now() / 1000) % 30);
-    data.forEach(a => {
-      const bar = document.getElementById('bar-' + a.id);
-      const sec = document.getElementById('sec-' + a.id);
-      if (bar) bar.style.width = (rem / 30 * 100) + '%';
-      if (sec) sec.textContent = rem + 's';
-    });
-    if (rem === 30) {
-      const res = await fetch('/api/accounts', { headers: { 'x-pin-hash': pinHash } });
-      if (res.ok) { data = await res.json(); renderTokens(); startTimer(); }
-    }
-  }, 1000);
-}
 
 async function hashPin(pin) {
   const enc = new TextEncoder();
@@ -755,6 +901,17 @@ export default {
         note: parsed.note || ''
       });
       await env.KV.put("accounts", JSON.stringify(accounts));
+      return Response.json({ success: true });
+    }
+
+
+    if (url.pathname === '/api/reorder' && request.method === 'POST') {
+      if (!await verifyPin(request, env)) return unauth();
+      const { order } = await request.json();
+      const accounts = JSON.parse(await env.KV.get("accounts") || "[]");
+      const map = Object.fromEntries(accounts.map(a => [a.id, a]));
+      const reordered = order.filter(id => map[id]).map(id => map[id]);
+      await env.KV.put("accounts", JSON.stringify(reordered));
       return Response.json({ success: true });
     }
 
