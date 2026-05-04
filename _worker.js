@@ -323,29 +323,27 @@ function renderTokens() {
   const el = document.getElementById('tokens');
   if (!filteredData.length) {
     el.innerHTML = data.length
-      ? `<div class="empty" style="grid-column:1/-1"><div class="empty-icon">🔍</div><div class="empty-title">无匹配结果</div></div>`
-      : `<div class="empty" style="grid-column:1/-1"><div class="empty-icon">🔐</div><div class="empty-title">暂无账户</div><div class="empty-desc">前往管理页面添加 2FA 账户</div><button class="btn btn-ghost" style="margin-top:12px" onclick="location.href='/admin'">前往管理</button></div>`;
+      ? '<div class=\"empty\" style=\"grid-column:1/-1\"><div class=\"empty-icon\">🔍</div><div class=\"empty-title\">无匹配结果</div></div>'
+      : '<div class=\"empty\" style=\"grid-column:1/-1\"><div class=\"empty-icon\">🔐</div><div class=\"empty-title\">暂无账户</div><button class=\"btn btn-ghost\" onclick=\"location.href=chr47+chr97+chr100+chr109+chr105+chr110\">前往管理</button></div>';
     return;
   }
   const rem = 30 - (Math.floor(Date.now() / 1000) % 30);
-  el.innerHTML = filteredData.map((a, i) => `
-    <div class="token-card${rem <= 8 ? ' expiring' : ''}" data-idx="${i}" draggable="true"
-      ondragstart="dragStart(event,${i})" ondragover="dragOver(event,${i})" ondragend="dragEnd(event)"
-      ondrop="drop(event,${i})" onclick="copyCode('${a.id}','${a.token}')">
-      <div class="token-issuer" style="display:flex;align-items:center">
-        ${avatarHtml(a.name, a.issuer)}
-        ${esc(a.issuer)}
-      </div>
-      <div class="token-name">${esc(a.name)}</div>
-      <div class="token-note">${esc(a.note || '')}</div>
-      <div class="token-code" id="code-${a.id}">${fmt(a.token)}</div>
-      <div class="progress-wrap"><div class="progress-bar" id="bar-${a.id}" style="width:${rem/30*100}%"></div></div>
-      <div class="token-meta">
-        <span class="token-timer" id="sec-${a.id}">${rem}s</span>
-        <span class="copy-hint" id="hint-${a.id}">点击复制</span>
-        <span class="copied-badge" id="copied-${a.id}">已复制 ✓</span>
-      </div>
-    </div>`).join('');
+  el.innerHTML = filteredData.map(function(a, i) {
+    var expClass = rem <= 8 ? ' expiring' : '';
+    return '<div class=\"token-card' + expClass + '\" data-idx=\"' + i + '\" draggable=\"true\"' +
+      ' ondragstart=\"dragStart(event,' + i + ')\" ondragover=\"dragOver(event,' + i + ')\" ondragend=\"dragEnd(event)\"' +
+      ' ondrop=\"drop(event,' + i + ')\" onclick=\"copyCode(\\'' + a.id + '\\',\\'' + a.token + '\\')\">' +
+      '<div class=\"token-issuer\" style=\"display:flex;align-items:center\">' + avatarHtml(a.name, a.issuer) + esc(a.issuer) + '</div>' +
+      '<div class=\"token-name\">' + esc(a.name) + '</div>' +
+      '<div class=\"token-note\">' + esc(a.note || '') + '</div>' +
+      '<div class=\"token-code\" id=\"code-' + a.id + '\">' + fmt(a.token) + '</div>' +
+      '<div class=\"progress-wrap\"><div class=\"progress-bar\" id=\"bar-' + a.id + '\" style=\"width:' + (rem/30*100) + '%\"></div></div>' +
+      '<div class=\"token-meta\">' +
+        '<span class=\"token-timer\" id=\"sec-' + a.id + '\">' + rem + 's</span>' +
+        '<span class=\"copy-hint\" id=\"hint-' + a.id + '\">点击复制</span>' +
+        '<span class=\"copied-badge\" id=\"copied-' + a.id + '\">已复制 ✓</span>' +
+      '</div></div>';
+  }).join('');
 }
 
 // ===== 复制 =====
@@ -731,17 +729,19 @@ async function loadAccounts() {
   const el = document.getElementById('account-list');
   if (!list.length) { el.innerHTML = '<div class="empty"><div class="empty-icon">🔐</div>暂无账户，从右侧添加</div>'; return; }
   el.innerHTML = list.map(a => `
-    <div class="account-row">
-      <div class="account-avatar">${esc(a.name[0] || '?').toUpperCase()}</div>
-      <div class="account-info">
-        <div class="account-name">${esc(a.name)}</div>
-        <div class="account-meta">${esc(a.issuer || a.name)}${a.note ? ' · ' + esc(a.note) : ''}</div>
-      </div>
-      <div class="account-actions">
-        <button class="btn btn-ghost btn-sm" onclick="openEdit('${a.id}','${esc(a.name)}','${esc(a.note||'')}')">编辑</button>
-        <button class="btn btn-danger-ghost btn-sm" onclick="deleteAccount('${a.id}')">删除</button>
-      </div>
-    </div>`).join('');
+  el.innerHTML = list.map(function(a) {
+    return '<div class=\"account-row\">' +
+      '<div class=\"account-avatar\">' + esc((a.name[0] || '?').toUpperCase()) + '</div>' +
+      '<div class=\"account-info\">' +
+        '<div class=\"account-name\">' + esc(a.name) + '</div>' +
+        '<div class=\"account-meta\">' + esc(a.issuer || a.name) + (a.note ? ' · ' + esc(a.note) : '') + '</div>' +
+      '</div>' +
+      '<div class=\"account-actions\">' +
+        '<button class=\"btn btn-ghost btn-sm\" onclick=\"openEdit(\\'' + a.id + '\\',\\'' + esc(a.name) + '\\',\\'' + esc(a.note||'') + '\\')\">' + '编辑</button>' +
+        '<button class=\"btn btn-danger-ghost btn-sm\" onclick=\"deleteAccount(\\'' + a.id + '\\')\">' + '删除</button>' +
+      '</div>' +
+    '</div>';
+  }).join('');
 }
 
 async function addAccount() {
