@@ -9,134 +9,282 @@ const HOME_HTML = `<!DOCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TOTP-Auth</title>
 <style>
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f0f2f5;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:20px}
-  .logo{font-size:2em;margin:40px 0 8px}
-  h1{font-size:1.4em;color:#1a1a2e;margin-bottom:4px}
-  .sub{color:#888;font-size:.9em;margin-bottom:32px}
-  .card{background:#fff;border-radius:16px;padding:24px;width:100%;max-width:420px;box-shadow:0 2px 12px rgba(0,0,0,.08);margin-bottom:12px}
-  input{width:100%;padding:14px 16px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:1em;outline:none;transition:.2s;letter-spacing:4px;text-align:center}
-  input:focus{border-color:#4f46e5}
-  button{width:100%;padding:14px;background:#4f46e5;color:#fff;border:none;border-radius:10px;font-size:1em;font-weight:600;cursor:pointer;margin-top:12px;transition:.15s}
-  button:hover{background:#4338ca}
-  .err{color:#ef4444;font-size:.85em;margin-top:8px;text-align:center}
-  .tokens{width:100%;max-width:420px}
-  .token-card{background:#fff;border-radius:16px;padding:20px;margin-bottom:12px;box-shadow:0 2px 12px rgba(0,0,0,.08)}
-  .issuer{font-size:.78em;color:#6366f1;font-weight:600;letter-spacing:.5px;text-transform:uppercase}
-  .name{font-size:1em;color:#374151;font-weight:500;margin:2px 0 4px}
-  .note{color:#9ca3af;font-size:.82em}
-  .code{font-size:2.4em;font-weight:700;color:#1a1a2e;letter-spacing:8px;margin:8px 0;cursor:pointer;user-select:none}
-  .code:hover{color:#4f46e5}
-  .timer-wrap{height:4px;background:#f3f4f6;border-radius:2px;overflow:hidden}
-  .timer-bar{height:100%;background:linear-gradient(90deg,#6366f1,#8b5cf6);border-radius:2px;transition:width 1s linear}
-  .timer-text{font-size:.75em;color:#9ca3af;margin-top:4px}
-  .nav{width:100%;max-width:420px;display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
-  .nav-title{font-size:1.1em;font-weight:700;color:#1a1a2e}
-  .admin-btn{background:none;border:1.5px solid #e5e7eb;color:#374151;padding:8px 16px;border-radius:8px;font-size:.85em;cursor:pointer;width:auto;margin:0}
-  .admin-btn:hover{border-color:#4f46e5;color:#4f46e5;background:#f5f3ff}
-  .copied{animation:flash .3s}
-  @keyframes flash{0%,100%{opacity:1}50%{opacity:.3}}
-  @media(prefers-color-scheme:dark){body{background:#0f0f1a}h1,.nav-title,.name,.code{color:#f1f1f1}.card,.token-card{background:#1e1e2e;box-shadow:0 2px 12px rgba(0,0,0,.3)}.admin-btn{border-color:#374151;color:#9ca3af}.timer-wrap{background:#2d2d3d}input{background:#1e1e2e;border-color:#374151;color:#f1f1f1}}
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #fafafa;
+    --bg-card: #ffffff;
+    --bg-sidebar: #f4f4f5;
+    --border: #e4e4e7;
+    --border-light: #f0f0f1;
+    --text-primary: #18181b;
+    --text-secondary: #52525b;
+    --text-muted: #a1a1aa;
+    --accent: #2563eb;
+    --accent-bg: #eff6ff;
+    --accent-hover: #1d4ed8;
+    --success: #16a34a;
+    --success-bg: #f0fdf4;
+    --error: #dc2626;
+    --radius: 6px;
+    --radius-lg: 10px;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+    --shadow: 0 4px 12px rgba(0,0,0,.07);
+    --font: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+    --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+    --transition: .15s ease;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #09090b;
+      --bg-card: #18181b;
+      --bg-sidebar: #111113;
+      --border: #27272a;
+      --border-light: #1f1f22;
+      --text-primary: #fafafa;
+      --text-secondary: #a1a1aa;
+      --text-muted: #52525b;
+      --accent: #3b82f6;
+      --accent-bg: #1e3a5f;
+      --accent-hover: #60a5fa;
+      --success: #22c55e;
+      --success-bg: #052e16;
+      --error: #f87171;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,.3);
+      --shadow: 0 4px 12px rgba(0,0,0,.4);
+    }
+  }
+  html, body { height: 100%; background: var(--bg); color: var(--text-primary); font-family: var(--font); font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+
+  /* ===== LAYOUT ===== */
+  .layout { display: grid; grid-template-rows: 48px 1fr; grid-template-columns: 220px 1fr; height: 100vh; }
+  .topbar { grid-column: 1 / -1; background: var(--bg-card); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 20px; gap: 12px; z-index: 10; }
+  .sidebar { background: var(--bg-sidebar); border-right: 1px solid var(--border); padding: 16px 0; overflow-y: auto; }
+  .main { overflow-y: auto; padding: 28px 32px; }
+
+  /* ===== TOPBAR ===== */
+  .topbar-brand { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 13px; color: var(--text-primary); letter-spacing: -.01em; }
+  .topbar-brand .icon { width: 20px; height: 20px; background: var(--accent); border-radius: 4px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 11px; }
+  .topbar-divider { width: 1px; height: 18px; background: var(--border); margin: 0 4px; }
+  .topbar-status { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); margin-left: auto; }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); }
+  .topbar-btn { padding: 5px 12px; border-radius: var(--radius); font-size: 12px; font-weight: 500; border: 1px solid var(--border); background: transparent; color: var(--text-secondary); cursor: pointer; transition: var(--transition); display: flex; align-items: center; gap: 6px; }
+  .topbar-btn:hover { background: var(--bg); color: var(--text-primary); border-color: var(--text-muted); }
+
+  /* ===== SIDEBAR ===== */
+  .sidebar-section { padding: 0 12px 16px; }
+  .sidebar-label { font-size: 11px; font-weight: 600; color: var(--text-muted); letter-spacing: .06em; text-transform: uppercase; padding: 0 8px; margin-bottom: 4px; }
+  .sidebar-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: var(--radius); font-size: 13px; color: var(--text-secondary); cursor: pointer; transition: var(--transition); user-select: none; }
+  .sidebar-item:hover { background: var(--border-light); color: var(--text-primary); }
+  .sidebar-item.active { background: var(--accent-bg); color: var(--accent); font-weight: 500; }
+  .sidebar-item .ico { width: 15px; opacity: .6; font-size: 13px; }
+  .sidebar-item.active .ico { opacity: 1; }
+
+  /* ===== MAIN CONTENT ===== */
+  .page-header { margin-bottom: 24px; }
+  .page-title { font-size: 18px; font-weight: 600; color: var(--text-primary); letter-spacing: -.02em; }
+  .page-desc { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+  .section-row { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+
+  /* ===== CARDS ===== */
+  .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+  .card-header { padding: 14px 16px; border-bottom: 1px solid var(--border-light); display: flex; align-items: center; justify-content: space-between; }
+  .card-title { font-size: 12px; font-weight: 600; color: var(--text-secondary); letter-spacing: .02em; text-transform: uppercase; }
+  .card-body { padding: 16px; }
+
+  /* ===== TOKEN CARD ===== */
+  .token-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px; cursor: pointer; transition: var(--transition); position: relative; }
+  .token-card:hover { border-color: var(--accent); box-shadow: var(--shadow-sm); }
+  .token-issuer { font-size: 10px; font-weight: 600; color: var(--accent); letter-spacing: .08em; text-transform: uppercase; margin-bottom: 2px; }
+  .token-name { font-size: 13px; color: var(--text-primary); font-weight: 500; margin-bottom: 2px; }
+  .token-note { font-size: 11px; color: var(--text-muted); margin-bottom: 12px; min-height: 15px; }
+  .token-code { font-family: var(--font-mono); font-size: 26px; font-weight: 700; color: var(--text-primary); letter-spacing: 6px; margin-bottom: 10px; }
+  .token-code:hover { color: var(--accent); }
+  .progress-wrap { height: 2px; background: var(--border); border-radius: 1px; overflow: hidden; }
+  .progress-bar { height: 100%; background: var(--accent); border-radius: 1px; transition: width 1s linear; }
+  .token-meta { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; }
+  .token-timer { font-size: 11px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+  .copy-hint { font-size: 11px; color: var(--text-muted); }
+  .copied-badge { font-size: 11px; color: var(--success); display: none; }
+
+  /* ===== PIN SCREEN ===== */
+  .pin-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: calc(100vh - 48px); padding: 24px; }
+  .pin-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 32px; width: 100%; max-width: 360px; box-shadow: var(--shadow); }
+  .pin-icon { width: 36px; height: 36px; background: var(--accent-bg); border-radius: var(--radius); display: flex; align-items: center; justify-content: center; font-size: 16px; margin-bottom: 16px; }
+  .pin-title { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+  .pin-desc { font-size: 13px; color: var(--text-muted); margin-bottom: 20px; }
+  .field-label { font-size: 11px; font-weight: 600; color: var(--text-secondary); letter-spacing: .04em; text-transform: uppercase; margin-bottom: 6px; }
+  input[type=password], input[type=text] { width: 100%; padding: 9px 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); color: var(--text-primary); font-size: 14px; outline: none; transition: var(--transition); font-family: var(--font); }
+  input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-bg); }
+  .btn { padding: 8px 16px; border-radius: var(--radius); font-size: 13px; font-weight: 500; border: none; cursor: pointer; transition: var(--transition); display: inline-flex; align-items: center; gap: 6px; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: var(--accent-hover); }
+  .btn-full { width: 100%; justify-content: center; margin-top: 12px; padding: 10px; }
+  .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text-secondary); }
+  .btn-ghost:hover { border-color: var(--text-muted); color: var(--text-primary); }
+  .err-text { font-size: 12px; color: var(--error); margin-top: 8px; }
+
+  /* ===== EMPTY STATE ===== */
+  .empty { text-align: center; padding: 48px 24px; color: var(--text-muted); }
+  .empty-icon { font-size: 28px; margin-bottom: 12px; opacity: .4; }
+  .empty-title { font-size: 14px; color: var(--text-secondary); margin-bottom: 4px; }
+  .empty-desc { font-size: 12px; }
+
+  /* ===== RESPONSIVE ===== */
+  @media (max-width: 640px) {
+    .layout { grid-template-columns: 1fr; grid-template-rows: 48px auto 1fr; }
+    .sidebar { display: none; }
+    .main { padding: 20px 16px; }
+    .token-code { font-size: 22px; }
+  }
 </style>
 </head>
 <body>
 
-<div id="login-view">
-  <div class="logo">🔐</div>
-  <h1>TOTP-Auth</h1>
-  <p class="sub">输入 PIN 码查看验证码</p>
-  <div class="card">
-    <input id="pin" type="password" placeholder="6 位 PIN" maxlength="6" inputmode="numeric" onkeydown="if(event.key==='Enter')login()">
-    <button onclick="login()">进入</button>
-    <p class="err" id="err"></p>
+<!-- PIN Screen -->
+<div id="pin-screen" class="pin-screen">
+  <div class="pin-box">
+    <div class="pin-icon">🔐</div>
+    <div class="pin-title">TOTP-Auth</div>
+    <div class="pin-desc">输入 PIN 码继续</div>
+    <div class="field-label">PIN 码</div>
+    <input id="pin" type="password" placeholder="••••••" maxlength="6" inputmode="numeric" autocomplete="current-password" onkeydown="if(event.key==='Enter')login()">
+    <p class="err-text" id="pin-err"></p>
+    <button class="btn btn-primary btn-full" onclick="login()">进入</button>
   </div>
 </div>
 
-<div id="main-view" style="display:none">
-  <div class="nav">
-    <span class="nav-title">🔐 TOTP-Auth</span>
-    <button class="admin-btn" onclick="location.href='/admin'">⚙️ 管理</button>
-  </div>
-  <div class="tokens" id="tokens"></div>
+<!-- App Layout -->
+<div class="layout" id="app" style="display:none">
+  <!-- Topbar -->
+  <header class="topbar">
+    <div class="topbar-brand">
+      <div class="icon">🔐</div>
+      TOTP-Auth
+    </div>
+    <div class="topbar-divider"></div>
+    <span style="font-size:12px;color:var(--text-muted)">验证码管理器</span>
+    <div class="topbar-status">
+      <div class="status-dot"></div>
+      <span>KV 已连接</span>
+    </div>
+    <button class="topbar-btn" onclick="location.href='/admin'">⚙ 管理账户</button>
+  </header>
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">工作台</div>
+      <div class="sidebar-item active">
+        <span class="ico">▤</span> 验证码
+      </div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">账户</div>
+      <div class="sidebar-item" onclick="location.href='/admin'">
+        <span class="ico">+</span> 添加账户
+      </div>
+      <div class="sidebar-item" onclick="location.href='/admin'">
+        <span class="ico">✎</span> 管理账户
+      </div>
+    </div>
+    <div class="sidebar-section" style="margin-top:auto">
+      <div class="sidebar-label">系统</div>
+      <div class="sidebar-item" onclick="logout()">
+        <span class="ico">←</span> 退出登录
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <div class="page-header">
+      <div class="page-title">验证码</div>
+      <div class="page-desc">点击验证码自动复制 · 每 30 秒自动刷新</div>
+    </div>
+    <div class="section-row" id="tokens"></div>
+  </main>
 </div>
 
 <script>
-let pinHash = localStorage.getItem('ph');
-let remaining = 30 - (Math.floor(Date.now()/1000) % 30);
-let data = [];
+let pinHash = localStorage.getItem('ph'), data = [];
+if (pinHash) tryAutoLogin();
 
-if(pinHash) tryAutoLogin();
-
-async function login(){
+async function login() {
   const pin = document.getElementById('pin').value;
-  if(pin.length !== 6){document.getElementById('err').textContent='请输入6位PIN';return;}
+  if (pin.length !== 6) { document.getElementById('pin-err').textContent = '请输入 6 位数字 PIN'; return; }
   pinHash = await hashPin(pin);
-  const res = await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pin})});
+  const res = await fetch('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pin }) });
   const d = await res.json();
-  if(d.success){localStorage.setItem('ph',pinHash);showMain();}
-  else{document.getElementById('err').textContent='PIN 错误，请重试';}
+  if (d.success) { localStorage.setItem('ph', pinHash); showApp(); }
+  else document.getElementById('pin-err').textContent = 'PIN 错误，请重试';
 }
 
-async function tryAutoLogin(){
-  const res = await fetch('/api/accounts',{headers:{'x-pin-hash':pinHash}});
-  if(res.ok){data=await res.json();showMain();}
-  else{localStorage.removeItem('ph');}
+async function tryAutoLogin() {
+  const res = await fetch('/api/accounts', { headers: { 'x-pin-hash': pinHash } });
+  if (res.ok) { data = await res.json(); showApp(); }
+  else { localStorage.removeItem('ph'); pinHash = null; }
 }
 
-function showMain(){
-  document.getElementById('login-view').style.display='none';
-  document.getElementById('main-view').style.display='flex';
-  document.getElementById('main-view').style.flexDirection='column';
-  document.getElementById('main-view').style.alignItems='center';
-  document.getElementById('main-view').style.width='100%';
-  renderTokens();
-  startTimer();
+function showApp() {
+  document.getElementById('pin-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'grid';
+  renderTokens(); startTimer();
 }
 
-function renderTokens(){
+function logout() { localStorage.removeItem('ph'); location.reload(); }
+
+function renderTokens() {
   const el = document.getElementById('tokens');
-  if(!data.length){el.innerHTML='<div class="token-card" style="text-align:center;color:#9ca3af;padding:40px">暂无账户<br><small>点右上角⚙️ 管理添加</small></div>';return;}
-  el.innerHTML = data.map(a=>\`
-    <div class="token-card">
-      <div class="issuer">\${esc(a.issuer||a.name)}</div>
-      <div class="name">\${esc(a.name)}\${a.note?\` <span class="note">· \${esc(a.note)}</span>\`:''}</div>
-      <div class="code" id="code-\${a.id}" onclick="copyCode('\${a.id}','\${a.token}')">\${fmt(a.token)}</div>
-      <div class="timer-wrap"><div class="timer-bar" id="bar-\${a.id}" style="width:\${remaining/30*100}%"></div></div>
-      <div class="timer-text" id="sec-\${a.id}">\${remaining}s 后刷新</div>
-    </div>
-  \`).join('');
+  if (!data.length) {
+    el.innerHTML = `<div class="empty" style="grid-column:1/-1"><div class="empty-icon">🔐</div><div class="empty-title">暂无账户</div><div class="empty-desc">前往管理页面添加 2FA 账户</div><button class="btn btn-ghost" style="margin-top:12px" onclick="location.href='/admin'">前往管理</button></div>`;
+    return;
+  }
+  el.innerHTML = data.map(a => `
+    <div class="token-card" onclick="copyCode('${a.id}','${a.token}')">
+      <div class="token-issuer">${esc(a.issuer)}</div>
+      <div class="token-name">${esc(a.name)}</div>
+      <div class="token-note">${esc(a.note || '')}</div>
+      <div class="token-code" id="code-${a.id}">${fmt(a.token)}</div>
+      <div class="progress-wrap"><div class="progress-bar" id="bar-${a.id}" style="width:${a.remaining/30*100}%"></div></div>
+      <div class="token-meta">
+        <span class="token-timer" id="sec-${a.id}">${a.remaining}s</span>
+        <span class="copy-hint" id="hint-${a.id}">点击复制</span>
+        <span class="copied-badge" id="copied-${a.id}">已复制 ✓</span>
+      </div>
+    </div>`).join('');
 }
 
-function fmt(t){return t.slice(0,3)+' '+t.slice(3);}
-function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-
-async function copyCode(id,token){
-  await navigator.clipboard.writeText(token).catch(()=>{});
-  const el=document.getElementById('code-'+id);
-  el.classList.add('copied');setTimeout(()=>el.classList.remove('copied'),300);
+async function copyCode(id, token) {
+  await navigator.clipboard.writeText(token).catch(() => {});
+  document.getElementById('hint-' + id).style.display = 'none';
+  document.getElementById('copied-' + id).style.display = 'inline';
+  setTimeout(() => { document.getElementById('hint-' + id).style.display = 'inline'; document.getElementById('copied-' + id).style.display = 'none'; }, 2000);
 }
 
-function startTimer(){
-  setInterval(async()=>{
-    remaining = 30 - (Math.floor(Date.now()/1000) % 30);
-    data.forEach(a=>{
-      const bar=document.getElementById('bar-'+a.id);
-      const sec=document.getElementById('sec-'+a.id);
-      if(bar) bar.style.width=(remaining/30*100)+'%';
-      if(sec) sec.textContent=remaining+'s 后刷新';
+function fmt(t) { return t.slice(0, 3) + ' ' + t.slice(3); }
+function esc(s) { return String(s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+
+function startTimer() {
+  setInterval(async () => {
+    const rem = 30 - (Math.floor(Date.now() / 1000) % 30);
+    data.forEach(a => {
+      const bar = document.getElementById('bar-' + a.id);
+      const sec = document.getElementById('sec-' + a.id);
+      if (bar) bar.style.width = (rem / 30 * 100) + '%';
+      if (sec) sec.textContent = rem + 's';
     });
-    if(remaining===30){
-      const res=await fetch('/api/accounts',{headers:{'x-pin-hash':pinHash}});
-      if(res.ok){data=await res.json();renderTokens();}
+    if (rem === 30) {
+      const res = await fetch('/api/accounts', { headers: { 'x-pin-hash': pinHash } });
+      if (res.ok) { data = await res.json(); renderTokens(); startTimer(); }
     }
-  },1000);
+  }, 1000);
 }
 
-async function hashPin(pin){
-  const enc=new TextEncoder();
-  const key=await crypto.subtle.importKey('raw',enc.encode(pin),'PBKDF2',false,['deriveBits']);
-  const hash=await crypto.subtle.deriveBits({name:'PBKDF2',salt:enc.encode('totp-auth-salt-2026'),iterations:100000,hash:'SHA-256'},key,256);
-  return Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,'0')).join('');
+async function hashPin(pin) {
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey('raw', enc.encode(pin), 'PBKDF2', false, ['deriveBits']);
+  const hash = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt: enc.encode('totp-auth-salt-2026'), iterations: 100000, hash: 'SHA-256' }, key, 256);
+  return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 </script>
 </body>
@@ -148,305 +296,404 @@ const ADMIN_HTML = `<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>管理 - TOTP-Auth</title>
+<title>管理 — TOTP-Auth</title>
 <style>
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f0f2f5;min-height:100vh;padding:20px;display:flex;flex-direction:column;align-items:center}
-  h1{font-size:1.3em;color:#1a1a2e;margin-bottom:20px;margin-top:10px}
-  .card{background:#fff;border-radius:16px;padding:20px;width:100%;max-width:480px;box-shadow:0 2px 12px rgba(0,0,0,.08);margin-bottom:12px}
-  .card h2{font-size:1em;color:#374151;margin-bottom:14px}
-  input,textarea{width:100%;padding:12px 14px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:.95em;outline:none;transition:.2s;margin-bottom:10px}
-  input:focus,textarea:focus{border-color:#4f46e5}
-  textarea{resize:vertical;min-height:70px;font-family:monospace;font-size:.88em}
-  .btn{padding:12px 20px;border:none;border-radius:10px;font-size:.95em;font-weight:600;cursor:pointer;transition:.15s}
-  .btn-primary{background:#4f46e5;color:#fff;width:100%}
-  .btn-primary:hover{background:#4338ca}
-  .btn-sm{padding:7px 14px;font-size:.82em;border-radius:8px}
-  .btn-danger{background:#fee2e2;color:#ef4444}
-  .btn-danger:hover{background:#fca5a5}
-  .btn-edit{background:#eff6ff;color:#3b82f6}
-  .btn-edit:hover{background:#bfdbfe}
-  .account-item{display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid #f3f4f6}
-  .account-item:last-child{border-bottom:none}
-  .account-info .name{font-weight:600;color:#1a1a2e;font-size:.95em}
-  .account-info .issuer{font-size:.78em;color:#6366f1;margin-top:1px}
-  .account-info .note{font-size:.82em;color:#9ca3af;margin-top:2px}
-  .actions{display:flex;gap:8px;flex-shrink:0}
-  .back-btn{background:none;border:1.5px solid #e5e7eb;color:#374151;padding:8px 16px;border-radius:8px;font-size:.85em;cursor:pointer;margin-bottom:16px}
-  .back-btn:hover{border-color:#4f46e5;color:#4f46e5}
-  .tip{font-size:.78em;color:#9ca3af;margin-bottom:8px}
-  .msg{padding:10px 14px;border-radius:8px;font-size:.88em;margin-bottom:10px;display:none}
-  .msg.ok{background:#dcfce7;color:#16a34a;display:block}
-  .msg.err{background:#fee2e2;color:#ef4444;display:block}
-  @media(prefers-color-scheme:dark){body{background:#0f0f1a}.card{background:#1e1e2e;box-shadow:0 2px 12px rgba(0,0,0,.3)}.card h2,.account-info .name,h1{color:#f1f1f1}input,textarea{background:#1e1e2e;border-color:#374151;color:#f1f1f1}.account-item{border-bottom-color:#2d2d3d}.back-btn{border-color:#374151;color:#9ca3af}}
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #fafafa; --bg-card: #ffffff; --bg-sidebar: #f4f4f5;
+    --border: #e4e4e7; --border-light: #f0f0f1;
+    --text-primary: #18181b; --text-secondary: #52525b; --text-muted: #a1a1aa;
+    --accent: #2563eb; --accent-bg: #eff6ff; --accent-hover: #1d4ed8;
+    --success: #16a34a; --success-bg: #f0fdf4;
+    --error: #dc2626; --error-bg: #fef2f2;
+    --radius: 6px; --radius-lg: 10px;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,.06);
+    --shadow: 0 4px 12px rgba(0,0,0,.07);
+    --font: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+    --transition: .15s ease;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #09090b; --bg-card: #18181b; --bg-sidebar: #111113;
+      --border: #27272a; --border-light: #1f1f22;
+      --text-primary: #fafafa; --text-secondary: #a1a1aa; --text-muted: #52525b;
+      --accent: #3b82f6; --accent-bg: #1e3a5f; --accent-hover: #60a5fa;
+      --success: #22c55e; --success-bg: #052e16;
+      --error: #f87171; --error-bg: #450a0a;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,.3); --shadow: 0 4px 12px rgba(0,0,0,.4);
+    }
+  }
+  html, body { height: 100%; background: var(--bg); color: var(--text-primary); font-family: var(--font); font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+  .layout { display: grid; grid-template-rows: 48px 1fr; grid-template-columns: 220px 1fr; height: 100vh; }
+  .topbar { grid-column: 1/-1; background: var(--bg-card); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 20px; gap: 12px; z-index: 10; }
+  .topbar-brand { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 13px; }
+  .topbar-brand .icon { width: 20px; height: 20px; background: var(--accent); border-radius: 4px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 11px; }
+  .topbar-divider { width: 1px; height: 18px; background: var(--border); margin: 0 4px; }
+  .topbar-badge { font-size: 11px; color: var(--text-muted); background: var(--bg); border: 1px solid var(--border); padding: 2px 8px; border-radius: 100px; }
+  .topbar-actions { margin-left: auto; display: flex; gap: 8px; }
+  .btn { padding: 8px 14px; border-radius: var(--radius); font-size: 12px; font-weight: 500; border: none; cursor: pointer; transition: var(--transition); display: inline-flex; align-items: center; gap: 6px; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: var(--accent-hover); }
+  .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text-secondary); }
+  .btn-ghost:hover { border-color: var(--text-muted); color: var(--text-primary); background: var(--bg); }
+  .btn-danger-ghost { background: transparent; border: 1px solid transparent; color: var(--error); }
+  .btn-danger-ghost:hover { background: var(--error-bg); border-color: var(--error); }
+  .btn-sm { padding: 5px 10px; font-size: 11px; }
+  .sidebar { background: var(--bg-sidebar); border-right: 1px solid var(--border); padding: 16px 0; overflow-y: auto; }
+  .sidebar-section { padding: 0 12px 16px; }
+  .sidebar-label { font-size: 11px; font-weight: 600; color: var(--text-muted); letter-spacing: .06em; text-transform: uppercase; padding: 0 8px; margin-bottom: 4px; }
+  .sidebar-item { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: var(--radius); font-size: 13px; color: var(--text-secondary); cursor: pointer; transition: var(--transition); }
+  .sidebar-item:hover { background: var(--border-light); color: var(--text-primary); }
+  .sidebar-item.active { background: var(--accent-bg); color: var(--accent); font-weight: 500; }
+  .sidebar-item .ico { width: 15px; opacity: .6; font-size: 13px; }
+  .sidebar-item.active .ico { opacity: 1; }
+  .main { overflow-y: auto; padding: 28px 32px; }
+  .page-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 24px; gap: 16px; }
+  .page-title { font-size: 18px; font-weight: 600; letter-spacing: -.02em; }
+  .page-desc { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+  .content-grid { display: grid; grid-template-columns: 1fr 360px; gap: 24px; align-items: start; }
+  .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+  .card-header { padding: 14px 16px; border-bottom: 1px solid var(--border-light); display: flex; align-items: center; justify-content: space-between; }
+  .card-title { font-size: 12px; font-weight: 600; color: var(--text-secondary); letter-spacing: .02em; text-transform: uppercase; }
+  .card-body { padding: 16px; }
+  .field-group { margin-bottom: 14px; }
+  .field-label { font-size: 11px; font-weight: 600; color: var(--text-secondary); letter-spacing: .04em; text-transform: uppercase; margin-bottom: 5px; display: block; }
+  .field-hint { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+  input[type=text], input[type=password] { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); color: var(--text-primary); font-size: 13px; outline: none; transition: var(--transition); font-family: inherit; }
+  input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-bg); }
+  .input-mono { font-family: 'JetBrains Mono', 'Fira Code', monospace; letter-spacing: 1px; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .alert { padding: 10px 12px; border-radius: var(--radius); font-size: 12px; margin-bottom: 14px; display: none; border: 1px solid; }
+  .alert.ok { background: var(--success-bg); color: var(--success); border-color: var(--success); }
+  .alert.err { background: var(--error-bg); color: var(--error); border-color: var(--error); }
+  /* Account List */
+  .account-row { display: flex; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--border-light); gap: 12px; transition: var(--transition); }
+  .account-row:last-child { border-bottom: none; }
+  .account-row:hover { background: var(--bg); }
+  .account-avatar { width: 30px; height: 30px; border-radius: var(--radius); background: var(--accent-bg); color: var(--accent); font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .account-info { flex: 1; min-width: 0; }
+  .account-name { font-size: 13px; font-weight: 500; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .account-meta { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+  .account-actions { display: flex; gap: 4px; flex-shrink: 0; }
+  .empty { text-align: center; padding: 40px 24px; color: var(--text-muted); }
+  .empty-icon { font-size: 24px; margin-bottom: 8px; opacity: .4; }
+  /* Modal */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 100; align-items: center; justify-content: center; padding: 24px; }
+  .modal-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); width: 100%; max-width: 380px; box-shadow: var(--shadow); }
+  .modal-header { padding: 16px 18px; border-bottom: 1px solid var(--border-light); display: flex; align-items: center; justify-content: space-between; }
+  .modal-title { font-size: 14px; font-weight: 600; }
+  .modal-close { background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 16px; padding: 2px; line-height: 1; }
+  .modal-close:hover { color: var(--text-primary); }
+  .modal-body { padding: 16px 18px; }
+  .modal-footer { padding: 12px 18px; border-top: 1px solid var(--border-light); display: flex; justify-content: flex-end; gap: 8px; }
+  /* QR Modal */
+  .qr-video-wrap { position: relative; border-radius: var(--radius); overflow: hidden; background: #000; aspect-ratio: 1; }
+  video { width: 100%; height: 100%; object-fit: cover; }
+  .qr-frame { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 60%; height: 60%; border: 1.5px solid rgba(255,255,255,.9); border-radius: 8px; box-shadow: 0 0 0 9999px rgba(0,0,0,.45); }
+  .qr-hint { position: absolute; bottom: 10px; left: 0; right: 0; text-align: center; font-size: 11px; color: rgba(255,255,255,.8); }
+  .divider { display: flex; align-items: center; gap: 10px; margin: 12px 0; color: var(--text-muted); font-size: 11px; }
+  .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+  .upload-label { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px; border: 1px dashed var(--border); border-radius: var(--radius); cursor: pointer; font-size: 12px; color: var(--text-secondary); transition: var(--transition); }
+  .upload-label:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-bg); }
+  /* PIN screen */
+  .pin-screen { display: flex; align-items: center; justify-content: center; height: 100vh; padding: 24px; }
+  .pin-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 28px; width: 100%; max-width: 340px; box-shadow: var(--shadow); }
+  .pin-icon { font-size: 20px; margin-bottom: 14px; }
+  .pin-title { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+  .pin-desc { font-size: 12px; color: var(--text-muted); margin-bottom: 18px; }
+  .err-text { font-size: 11px; color: var(--error); margin-top: 6px; }
+  @media (max-width: 768px) {
+    .layout { grid-template-columns: 1fr; }
+    .sidebar { display: none; }
+    .main { padding: 20px 16px; }
+    .content-grid { grid-template-columns: 1fr; }
+    .form-row { grid-template-columns: 1fr; }
+  }
 </style>
 </head>
 <body>
 
-<div style="width:100%;max-width:480px">
-  <button class="back-btn" onclick="location.href='/'">← 返回主页</button>
-</div>
-<h1>⚙️ 账户管理</h1>
-
-<div id="login-view-admin" class="card">
-  <h2>验证 PIN 码</h2>
-  <input id="admin-pin" type="password" placeholder="6 位 PIN" maxlength="6" inputmode="numeric" onkeydown="if(event.key==='Enter')adminLogin()">
-  <button class="btn btn-primary" onclick="adminLogin()">验证</button>
-  <p class="err" id="admin-err" style="color:#ef4444;font-size:.85em;margin-top:8px"></p>
-</div>
-
-<div id="admin-main" style="display:none;width:100%;max-width:480px">
-  <div class="card">
-    <h2>➕ 添加账户</h2>
-    <div id="add-msg" class="msg"></div>
-    <p class="tip">账户名</p>
-    <input id="new-name" placeholder="如：GitHub / Google" maxlength="50">
-    <p class="tip">密钥（Base32，扫码后显示的字母数字串）</p>
-    <input id="new-secret" placeholder="JBSWY3DPEHPK3PXP" style="font-family:monospace;letter-spacing:2px">
-    <p class="tip">发行者（可选，默认同账户名）</p>
-    <input id="new-issuer" placeholder="Google / GitHub / 自定义" maxlength="50">
-    <p class="tip">备注（可选）</p>
-    <input id="new-note" placeholder="如：工作邮箱、个人账号…" maxlength="100">
-    <button class="btn btn-primary" onclick="addAccount()">添加</button>
-    <div style="display:flex;align-items:center;margin:10px 0"><div style="flex:1;height:1px;background:#e5e7eb"></div><span style="padding:0 10px;font-size:.78em;color:#9ca3af">或</span><div style="flex:1;height:1px;background:#e5e7eb"></div></div>
-    <button class="btn" style="background:#f5f3ff;color:#4f46e5;width:100%;display:flex;align-items:center;justify-content:center;gap:8px" onclick="openQR()">📷 扫描二维码导入</button>
-  </div>
-
-  <div class="card">
-    <h2>📋 已有账户</h2>
-    <div id="account-list"><div style="text-align:center;color:#9ca3af;padding:20px">暂无账户</div></div>
+<!-- PIN Screen -->
+<div id="pin-screen" class="pin-screen">
+  <div class="pin-box">
+    <div class="pin-icon">🔐</div>
+    <div class="pin-title">管理员验证</div>
+    <div class="pin-desc">输入 PIN 码进入管理后台</div>
+    <label class="field-label">PIN 码</label>
+    <input id="admin-pin" type="password" placeholder="••••••" maxlength="6" inputmode="numeric" onkeydown="if(event.key==='Enter')adminLogin()">
+    <p class="err-text" id="admin-err"></p>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:12px;padding:9px" onclick="adminLogin()">验证</button>
   </div>
 </div>
 
-<!-- 编辑模态 -->
-<div id="edit-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);z-index:100;align-items:center;justify-content:center">
-  <div class="card" style="max-width:380px;margin:0 20px">
-    <h2>编辑账户</h2>
-    <input type="hidden" id="edit-id">
-    <p class="tip">账户名</p>
-    <input id="edit-name" maxlength="50">
-    <p class="tip">备注</p>
-    <input id="edit-note" maxlength="100">
-    <div style="display:flex;gap:10px;margin-top:4px">
-      <button class="btn btn-primary" style="flex:1" onclick="saveEdit()">保存</button>
-      <button class="btn" style="flex:1;background:#f3f4f6;color:#374151" onclick="closeEdit()">取消</button>
+<!-- App -->
+<div class="layout" id="app" style="display:none">
+  <header class="topbar">
+    <div class="topbar-brand">
+      <div class="icon">🔐</div>
+      TOTP-Auth
     </div>
-  </div>
-</div>
+    <div class="topbar-divider"></div>
+    <span class="topbar-badge">管理后台</span>
+    <div class="topbar-actions">
+      <button class="btn btn-ghost" onclick="location.href='/'">← 返回主页</button>
+    </div>
+  </header>
 
-<script>
-let pinHash='';
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">管理</div>
+      <div class="sidebar-item active"><span class="ico">▤</span> 账户列表</div>
+      <div class="sidebar-item" onclick="document.getElementById('new-name').focus()"><span class="ico">+</span> 添加账户</div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">操作</div>
+      <div class="sidebar-item" onclick="openQR()"><span class="ico">◉</span> 扫码导入</div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">系统</div>
+      <div class="sidebar-item" onclick="logout()"><span class="ico">←</span> 退出登录</div>
+    </div>
+  </aside>
 
-async function adminLogin(){
-  const pin=document.getElementById('admin-pin').value;
-  if(pin.length!==6){document.getElementById('admin-err').textContent='请输入6位PIN';return;}
-  pinHash=await hashPin(pin);
-  const res=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pin})});
-  const d=await res.json();
-  if(d.success){
-    localStorage.setItem('ph',pinHash);
-    document.getElementById('login-view-admin').style.display='none';
-    document.getElementById('admin-main').style.display='block';
-    loadAccounts();
-  } else {document.getElementById('admin-err').textContent='PIN 错误';}
-}
-
-async function loadAccounts(){
-  const res=await fetch('/api/accounts-admin',{headers:{'x-pin-hash':pinHash}});
-  if(!res.ok) return;
-  const accounts=await res.json();
-  const el=document.getElementById('account-list');
-  if(!accounts.length){el.innerHTML='<div style="text-align:center;color:#9ca3af;padding:20px">暂无账户</div>';return;}
-  el.innerHTML=accounts.map(a=>\`
-    <div class="account-item">
-      <div class="account-info">
-        <div class="name">\${esc(a.name)}</div>
-        <div class="issuer">\${esc(a.issuer||a.name)}</div>
-        \${a.note?\`<div class="note">· \${esc(a.note)}</div>\`:''}
+  <main class="main">
+    <div class="page-header">
+      <div>
+        <div class="page-title">账户管理</div>
+        <div class="page-desc">添加、编辑或删除 2FA 账户，密钥加密存储于 KV</div>
       </div>
-      <div class="actions">
-        <button class="btn btn-sm btn-edit" onclick="openEdit('\${a.id}',\`\${esc(a.name)}\`,\`\${esc(a.note||'')}\`)">编辑</button>
-        <button class="btn btn-sm btn-danger" onclick="deleteAccount('\${a.id}')">删除</button>
+      <button class="btn btn-ghost" onclick="openQR()">◉ 扫码导入</button>
+    </div>
+
+    <div class="content-grid">
+      <!-- 账户列表 -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">已有账户</span>
+          <span id="account-count" style="font-size:11px;color:var(--text-muted)">0 个</span>
+        </div>
+        <div id="account-list">
+          <div class="empty"><div class="empty-icon">🔐</div>暂无账户</div>
+        </div>
+      </div>
+
+      <!-- 添加表单 -->
+      <div class="card">
+        <div class="card-header"><span class="card-title">添加账户</span></div>
+        <div class="card-body">
+          <div id="add-alert" class="alert"></div>
+          <div class="field-group">
+            <label class="field-label">账户名 *</label>
+            <input type="text" id="new-name" placeholder="如：GitHub、Google">
+          </div>
+          <div class="field-group">
+            <label class="field-label">密钥 (Base32) *</label>
+            <input type="text" id="new-secret" class="input-mono" placeholder="JBSWY3DPEHPK3PXP">
+            <div class="field-hint">通常在服务商"设置 2FA"时以文字形式提供</div>
+          </div>
+          <div class="form-row">
+            <div class="field-group">
+              <label class="field-label">发行者</label>
+              <input type="text" id="new-issuer" placeholder="Google">
+            </div>
+            <div class="field-group">
+              <label class="field-label">备注</label>
+              <input type="text" id="new-note" placeholder="工作账号">
+            </div>
+          </div>
+          <button class="btn btn-primary" style="width:100%;justify-content:center;padding:9px" onclick="addAccount()">添加账户</button>
+          <div class="divider">或</div>
+          <button class="btn btn-ghost" style="width:100%;justify-content:center" onclick="openQR()">◉ 扫描二维码导入</button>
+        </div>
       </div>
     </div>
-  \`).join('');
-}
+  </main>
+</div>
 
-async function addAccount(){
-  const name=document.getElementById('new-name').value.trim();
-  const secret=document.getElementById('new-secret').value.trim().toUpperCase().replace(/\\s/g,'');
-  const issuer=document.getElementById('new-issuer').value.trim();
-  const note=document.getElementById('new-note').value.trim();
-  if(!name||!secret){showMsg('add-msg','账户名和密钥不能为空','err');return;}
-  const res=await fetch('/api/add',{method:'POST',headers:{'Content-Type':'application/json','x-pin-hash':pinHash},body:JSON.stringify({name,secret,issuer,note})});
-  const d=await res.json();
-  if(d.success){
-    showMsg('add-msg','添加成功 ✓','ok');
-    document.getElementById('new-name').value='';
-    document.getElementById('new-secret').value='';
-    document.getElementById('new-issuer').value='';
-    document.getElementById('new-note').value='';
-    loadAccounts();
-  } else showMsg('add-msg',d.error||'添加失败','err');
-}
-
-function openEdit(id,name,note){
-  document.getElementById('edit-id').value=id;
-  document.getElementById('edit-name').value=name;
-  document.getElementById('edit-note').value=note;
-  document.getElementById('edit-modal').style.display='flex';
-}
-function closeEdit(){document.getElementById('edit-modal').style.display='none';}
-async function saveEdit(){
-  const id=document.getElementById('edit-id').value;
-  const name=document.getElementById('edit-name').value.trim();
-  const note=document.getElementById('edit-note').value.trim();
-  await fetch('/api/edit',{method:'POST',headers:{'Content-Type':'application/json','x-pin-hash':pinHash},body:JSON.stringify({id,name,note})});
-  closeEdit(); loadAccounts();
-}
-async function deleteAccount(id){
-  if(!confirm('确认删除这个账户？')) return;
-  await fetch('/api/delete',{method:'POST',headers:{'Content-Type':'application/json','x-pin-hash':pinHash},body:JSON.stringify({id})});
-  loadAccounts();
-}
-
-function showMsg(id,text,type){
-  const el=document.getElementById(id);
-  el.textContent=text; el.className='msg '+type;
-  setTimeout(()=>el.className='msg',3000);
-}
-function esc(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-
-async function hashPin(pin){
-  const enc=new TextEncoder();
-  const key=await crypto.subtle.importKey('raw',enc.encode(pin),'PBKDF2',false,['deriveBits']);
-  const hash=await crypto.subtle.deriveBits({name:'PBKDF2',salt:enc.encode('totp-auth-salt-2026'),iterations:100000,hash:'SHA-256'},key,256);
-  return Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,'0')).join('');
-}
-
-// 自动登录
-const saved=localStorage.getItem('ph');
-if(saved){pinHash=saved;document.getElementById('login-view-admin').style.display='none';document.getElementById('admin-main').style.display='block';loadAccounts();}
-</script>
-
-<!-- QR 扫码弹窗 -->
-<div id="qr-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.7);z-index:200;align-items:center;justify-content:center;flex-direction:column">
-  <div class="card" style="max-width:380px;width:90%;margin:0 20px;padding:20px">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-      <h2 style="margin:0">📷 扫描二维码</h2>
-      <button onclick="closeQR()" style="background:none;border:none;font-size:1.4em;cursor:pointer;color:#9ca3af;padding:0">×</button>
+<!-- 编辑 Modal -->
+<div id="edit-modal" class="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title">编辑账户</span>
+      <button class="modal-close" onclick="closeEdit()">×</button>
     </div>
-    <!-- 摄像头预览 -->
-    <div style="position:relative;border-radius:12px;overflow:hidden;background:#000;aspect-ratio:1">
-      <video id="qr-video" autoplay playsinline style="width:100%;height:100%;object-fit:cover"></video>
-      <canvas id="qr-canvas" style="display:none"></canvas>
-      <!-- 扫描框 -->
-      <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:60%;height:60%;border:2px solid #fff;border-radius:8px;box-shadow:0 0 0 9999px rgba(0,0,0,.4)"></div>
-      <div id="qr-status" style="position:absolute;bottom:12px;left:0;right:0;text-align:center;color:#fff;font-size:.82em;background:rgba(0,0,0,.5);padding:4px">对准二维码自动识别…</div>
+    <div class="modal-body">
+      <input type="hidden" id="edit-id">
+      <div class="field-group">
+        <label class="field-label">账户名</label>
+        <input type="text" id="edit-name">
+      </div>
+      <div class="field-group">
+        <label class="field-label">备注</label>
+        <input type="text" id="edit-note">
+      </div>
     </div>
-    <!-- 或上传图片 -->
-    <div style="display:flex;align-items:center;margin:12px 0 8px"><div style="flex:1;height:1px;background:#e5e7eb"></div><span style="padding:0 10px;font-size:.78em;color:#9ca3af">或上传图片</span><div style="flex:1;height:1px;background:#e5e7eb"></div></div>
-    <label style="display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border:1.5px dashed #c7d2fe;border-radius:10px;cursor:pointer;color:#4f46e5;font-size:.9em">
-      🖼 选择图片文件
-      <input type="file" accept="image/*" id="qr-file" style="display:none" onchange="scanFile(this)">
-    </label>
-    <div id="qr-msg" style="display:none;margin-top:10px;padding:10px;border-radius:8px;font-size:.88em"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeEdit()">取消</button>
+      <button class="btn btn-primary" onclick="saveEdit()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- QR Modal -->
+<div id="qr-modal" class="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span class="modal-title">◉ 扫描二维码导入</span>
+      <button class="modal-close" onclick="closeQR()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="qr-video-wrap">
+        <video id="qr-video" autoplay playsinline></video>
+        <canvas id="qr-canvas" style="display:none"></canvas>
+        <div class="qr-frame"></div>
+        <div class="qr-hint" id="qr-status">对准 2FA 二维码自动识别</div>
+      </div>
+      <div class="divider">或上传图片</div>
+      <label class="upload-label">
+        🖼 选择图片文件
+        <input type="file" accept="image/*" id="qr-file" style="display:none" onchange="scanFile(this)">
+      </label>
+      <div id="qr-alert" class="alert" style="margin-top:10px;margin-bottom:0"></div>
+    </div>
   </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <script>
-let qrStream = null, qrTimer = null;
+let pinHash = '', qrStream = null, qrTimer = null;
+const saved = localStorage.getItem('ph');
+if (saved) { pinHash = saved; document.getElementById('pin-screen').style.display = 'none'; document.getElementById('app').style.display = 'grid'; loadAccounts(); }
 
-function openQR() {
-  document.getElementById('qr-modal').style.display = 'flex';
-  startCamera();
+async function adminLogin() {
+  const pin = document.getElementById('admin-pin').value;
+  if (pin.length !== 6) { document.getElementById('admin-err').textContent = '请输入 6 位数字 PIN'; return; }
+  pinHash = await hashPin(pin);
+  const res = await fetch('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pin }) });
+  const d = await res.json();
+  if (d.success) { localStorage.setItem('ph', pinHash); document.getElementById('pin-screen').style.display = 'none'; document.getElementById('app').style.display = 'grid'; loadAccounts(); }
+  else document.getElementById('admin-err').textContent = 'PIN 错误';
 }
 
-function closeQR() {
-  stopCamera();
-  document.getElementById('qr-modal').style.display = 'none';
-  document.getElementById('qr-msg').style.display = 'none';
+function logout() { localStorage.removeItem('ph'); location.reload(); }
+
+async function loadAccounts() {
+  const res = await fetch('/api/accounts-admin', { headers: { 'x-pin-hash': pinHash } });
+  if (!res.ok) return;
+  const list = await res.json();
+  document.getElementById('account-count').textContent = list.length + ' 个';
+  const el = document.getElementById('account-list');
+  if (!list.length) { el.innerHTML = '<div class="empty"><div class="empty-icon">🔐</div>暂无账户，从右侧添加</div>'; return; }
+  el.innerHTML = list.map(a => `
+    <div class="account-row">
+      <div class="account-avatar">${esc(a.name[0] || '?').toUpperCase()}</div>
+      <div class="account-info">
+        <div class="account-name">${esc(a.name)}</div>
+        <div class="account-meta">${esc(a.issuer || a.name)}${a.note ? ' · ' + esc(a.note) : ''}</div>
+      </div>
+      <div class="account-actions">
+        <button class="btn btn-ghost btn-sm" onclick="openEdit('${a.id}','${esc(a.name)}','${esc(a.note||'')}')">编辑</button>
+        <button class="btn btn-danger-ghost btn-sm" onclick="deleteAccount('${a.id}')">删除</button>
+      </div>
+    </div>`).join('');
 }
 
+async function addAccount() {
+  const name = document.getElementById('new-name').value.trim();
+  const secret = document.getElementById('new-secret').value.trim().toUpperCase().replace(/[^A-Z2-7]/g, '');
+  const issuer = document.getElementById('new-issuer').value.trim();
+  const note = document.getElementById('new-note').value.trim();
+  if (!name || !secret) { showAlert('add-alert', '账户名和密钥不能为空', 'err'); return; }
+  const res = await fetch('/api/add', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-pin-hash': pinHash }, body: JSON.stringify({ name, secret, issuer, note }) });
+  const d = await res.json();
+  if (d.success) {
+    showAlert('add-alert', '✓ 账户已添加', 'ok');
+    ['new-name','new-secret','new-issuer','new-note'].forEach(id => document.getElementById(id).value = '');
+    loadAccounts();
+  } else showAlert('add-alert', d.error || '添加失败', 'err');
+}
+
+function openEdit(id, name, note) {
+  document.getElementById('edit-id').value = id;
+  document.getElementById('edit-name').value = name;
+  document.getElementById('edit-note').value = note;
+  document.getElementById('edit-modal').style.display = 'flex';
+}
+function closeEdit() { document.getElementById('edit-modal').style.display = 'none'; }
+async function saveEdit() {
+  const id = document.getElementById('edit-id').value;
+  const name = document.getElementById('edit-name').value.trim();
+  const note = document.getElementById('edit-note').value.trim();
+  await fetch('/api/edit', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-pin-hash': pinHash }, body: JSON.stringify({ id, name, note }) });
+  closeEdit(); loadAccounts();
+}
+async function deleteAccount(id) {
+  if (!confirm('确认删除？此操作不可撤销')) return;
+  await fetch('/api/delete', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-pin-hash': pinHash }, body: JSON.stringify({ id }) });
+  loadAccounts();
+}
+
+function showAlert(id, text, type) {
+  const el = document.getElementById(id);
+  el.textContent = text; el.className = 'alert ' + type; el.style.display = 'block';
+  setTimeout(() => { el.style.display = 'none'; }, 3000);
+}
+
+function openQR() { document.getElementById('qr-modal').style.display = 'flex'; startCamera(); }
+function closeQR() { stopCamera(); document.getElementById('qr-modal').style.display = 'none'; document.getElementById('qr-alert').style.display = 'none'; document.getElementById('qr-file').value = ''; }
 async function startCamera() {
   try {
     qrStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
-    const video = document.getElementById('qr-video');
-    video.srcObject = qrStream;
-    video.play();
+    document.getElementById('qr-video').srcObject = qrStream;
     qrTimer = setInterval(scanFrame, 300);
-  } catch (e) {
-    document.getElementById('qr-status').textContent = '无法访问摄像头，请使用上传图片';
-  }
+  } catch { document.getElementById('qr-status').textContent = '无法访问摄像头，请上传图片'; }
 }
-
 function stopCamera() {
   clearInterval(qrTimer);
   if (qrStream) { qrStream.getTracks().forEach(t => t.stop()); qrStream = null; }
 }
-
 function scanFrame() {
-  const video = document.getElementById('qr-video');
-  if (video.readyState !== video.HAVE_ENOUGH_DATA) return;
-  const canvas = document.getElementById('qr-canvas');
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-  const ctx = canvas.getContext('2d');
-  ctx.drawImage(video, 0, 0);
-  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  const code = jsQR(imageData.data, canvas.width, canvas.height);
-  if (code) handleQRResult(code.data);
+  const v = document.getElementById('qr-video');
+  if (v.readyState !== v.HAVE_ENOUGH_DATA) return;
+  const c = document.getElementById('qr-canvas');
+  c.width = v.videoWidth; c.height = v.videoHeight;
+  c.getContext('2d').drawImage(v, 0, 0);
+  const d = c.getContext('2d').getImageData(0, 0, c.width, c.height);
+  const code = jsQR(d.data, c.width, c.height);
+  if (code) handleQR(code.data);
 }
-
 function scanFile(input) {
-  const file = input.files[0];
-  if (!file) return;
+  const file = input.files[0]; if (!file) return;
   const img = new Image();
   img.onload = () => {
-    const canvas = document.getElementById('qr-canvas');
-    canvas.width = img.width;
-    canvas.height = img.height;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(img, 0, 0);
-    const imageData = ctx.getImageData(0, 0, img.width, img.height);
-    const code = jsQR(imageData.data, img.width, img.height);
-    if (code) handleQRResult(code.data);
-    else showQRMsg('未识别到二维码，请尝试更清晰的图片', 'err');
+    const c = document.getElementById('qr-canvas');
+    c.width = img.width; c.height = img.height;
+    c.getContext('2d').drawImage(img, 0, 0);
+    const d = c.getContext('2d').getImageData(0, 0, img.width, img.height);
+    const code = jsQR(d.data, img.width, img.height);
+    if (code) handleQR(code.data);
+    else showAlert('qr-alert', '未识别到二维码，请尝试更清晰的图片', 'err');
   };
   img.src = URL.createObjectURL(file);
 }
-
-async function handleQRResult(data) {
+async function handleQR(data) {
   stopCamera();
-  document.getElementById('qr-status').textContent = '✅ 已识别，正在导入…';
-  if (!data.startsWith('otpauth://')) {
-    showQRMsg('不是有效的 2FA 二维码（需要 otpauth:// 格式）', 'err');
-    return;
-  }
-  const res = await fetch('/api/qr-import', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-pin-hash': pinHash },
-    body: JSON.stringify({ uri: data })
-  });
+  document.getElementById('qr-status').textContent = '✓ 已识别，正在导入…';
+  if (!data.startsWith('otpauth://')) { showAlert('qr-alert', '不是有效的 2FA 二维码', 'err'); return; }
+  const res = await fetch('/api/qr-import', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-pin-hash': pinHash }, body: JSON.stringify({ uri: data }) });
   const d = await res.json();
-  if (d.success) {
-    showQRMsg('✅ 导入成功！', 'ok');
-    setTimeout(() => { closeQR(); loadAccounts(); }, 1200);
-  } else {
-    showQRMsg(d.error || '导入失败', 'err');
-  }
+  if (d.success) { showAlert('qr-alert', '✓ 导入成功', 'ok'); setTimeout(() => { closeQR(); loadAccounts(); }, 1200); }
+  else showAlert('qr-alert', d.error || '导入失败', 'err');
 }
 
-function showQRMsg(text, type) {
-  const el = document.getElementById('qr-msg');
-  el.textContent = text;
-  el.style.display = 'block';
-  el.style.background = type === 'ok' ? '#dcfce7' : '#fee2e2';
-  el.style.color = type === 'ok' ? '#16a34a' : '#ef4444';
+function esc(s) { return String(s || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+async function hashPin(pin) {
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey('raw', enc.encode(pin), 'PBKDF2', false, ['deriveBits']);
+  const hash = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt: enc.encode('totp-auth-salt-2026'), iterations: 100000, hash: 'SHA-256' }, key, 256);
+  return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 </script>
-
 </body>
 </html>`;
 
