@@ -372,6 +372,24 @@ export default {
       return Response.json(accounts.map(({ id, name, issuer, note }) => ({ id, name, issuer, note })));
     }
 
+
+    if (url.pathname === '/api/qr-import' && request.method === 'POST') {
+      if (!await verifyPin(request, env)) return unauth();
+      const { uri } = await request.json();
+      const parsed = parseOtpauth(uri || '');
+      if (!parsed) return Response.json({ error: '无效的 otpauth URI' }, { status: 400 });
+      const accounts = JSON.parse(await env.KV.get("accounts") || "[]");
+      accounts.push({
+        id: crypto.randomUUID(),
+        name: parsed.name || parsed.issuer || '未命名',
+        secret: parsed.secret,
+        issuer: parsed.issuer || parsed.name || '未知',
+        note: parsed.note || ''
+      });
+      await env.KV.put("accounts", JSON.stringify(accounts));
+      return Response.json({ success: true });
+    }
+
     if (url.pathname === '/api/add' && request.method === 'POST') {
       if (!await verifyPin(request, env)) return unauth();
       const { name, secret, issuer, note } = await request.json();
@@ -410,6 +428,25 @@ async function verifyPin(request, env) {
   return stored === hash;
 }
 function unauth() { return Response.json({ error: '未授权' }, { status: 401 }); }
+
+function parseOtpauth(uri) {
+  try {
+    const u = new URL(uri);
+    if (u.protocol !== 'otpauth:') return null;
+    const type = u.hostname;
+    const label = decodeURIComponent(u.pathname.replace(/^\//, ''));
+    const params = Object.fromEntries(u.searchParams.entries());
+    const secret = (params.secret || '').replace(/\s/g, '').toUpperCase();
+    if (!secret) return null;
+    const [issuerFromLabel, accountFromLabel] = label.includes(':') ? label.split(':', 2) : ['', label];
+    const issuer = params.issuer || issuerFromLabel || '';
+    const name = accountFromLabel || issuer || '未命名';
+    return { type, issuer, name, secret, note: params.note || '' };
+  } catch (e) {
+    return null;
+  }
+}
+
 function html(content) { return new Response(content, { headers: { 'Content-Type': 'text/html;charset=utf-8' } }); }
 
 async function hashPin(pin) {
