@@ -280,8 +280,8 @@ function getFaviconUrl(name, issuer) {
 function avatarHtml(name, issuer) {
   const url = getFaviconUrl(name, issuer);
   const letter = (name || '?')[0].toUpperCase();
-  if (url) return `<img class="token-avatar" src="${url}" onerror="this.style.display='none';this.nextSibling.style.display='inline-flex'" alt=""><span class="token-avatar-letter" style="display:none">${letter}</span>`;
-  return `<span class="token-avatar-letter">${letter}</span>`;
+  if (url) return '<img class=\"token-avatar\" src=\"' + url + '\" onerror=\"this.style.display=\\'none\\';this.nextSibling.style.display=\\'inline-flex\\'\"' + ' alt=\"\"><span class=\"token-avatar-letter\" style=\"display:none\">' + letter + '</span>';
+  return '<span class=\"token-avatar-letter\">' + letter + '</span>';
 }
 
 let pinHash = localStorage.getItem('ph'), data = [], filteredData = [], dragSrcIdx = null;
