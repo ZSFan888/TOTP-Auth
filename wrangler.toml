@@ -1,0 +1,8 @@
+name = "totp-auth"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+[[kv_namespaces]]
+binding = "KV"
+id = "替换为你的KV_ID"
+preview_id = "替换为你的KV_PREVIEW_ID"
